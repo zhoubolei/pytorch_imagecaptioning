@@ -3,18 +3,20 @@ import torch
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import string
+import sys
+sys.path.insert(0, '/data/vision/torralba/deepscene/lib/cocoapi/PythonAPI')
 from pycocotools.coco import COCO
 from random import randrange
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-__COCO_IMG_PATH = "/media/ssd/Datasets/COCO/"
-__COCO_ANN_PATH = "/media/ssd/Datasets/COCO/annotations/"
+__COCO_IMG_PATH = "/data/vision/oliva/scenedataset/vqa_cache/coco_allimage2014"
+__COCO_ANN_PATH = "/data/vision/torralba/datasets/coco/annotations"
 
-__TRAIN_PATH = {'root': os.path.join(__COCO_IMG_PATH, 'train2014'),
+__TRAIN_PATH = {'root': os.path.join(__COCO_IMG_PATH, ''),
                 'annFile': os.path.join(__COCO_ANN_PATH, 'captions_train2014.json')
                 }
-__VAL_PATH = {'root': os.path.join(__COCO_IMG_PATH, 'val2014'),
+__VAL_PATH = {'root': os.path.join(__COCO_IMG_PATH, ''),
               'annFile': os.path.join(__COCO_ANN_PATH, 'captions_val2014.json')
               }
 

@@ -13,7 +13,7 @@ from data import build_vocab, get_coco_data, get_iterator
 from utils import setup_logging, adjust_optimizer, AverageMeter, select_optimizer
 from model import CaptionModel
 from torchvision.models import resnet
-
+import pdb
 model_names = sorted(name for name in resnet.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(resnet.__dict__[name]))
@@ -23,11 +23,11 @@ parser.add_argument('--results_dir', metavar='RESULTS_DIR', default='./results',
                     help='results dir')
 parser.add_argument('--save', metavar='SAVE', default='',
                     help='saved folder')
-parser.add_argument('--cnn', '-a', metavar='CNN', default='resnet50',
+parser.add_argument('--cnn', '-a', metavar='CNN', default='resnet18',
                     choices=model_names,
                     help='cnn feature extraction architecture: ' +
                     ' | '.join(model_names) +
-                    ' (default: resnet50)')
+                    ' (default: resnet18)')
 parser.add_argument('--embedding_size', default=256, type=int,
                     help='size of word embedding used')
 parser.add_argument('--rnn_size', default=256, type=int,
@@ -38,7 +38,7 @@ parser.add_argument('--max_length', default=30, type=int,
                     help='maximum time length to feed')
 parser.add_argument('--type', default='torch.cuda.FloatTensor',
                     help='type of tensor - e.g torch.cuda.HalfTensor')
-parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
                     help='number of data loading workers (default: 8)')
 parser.add_argument('--epochs', default=10, type=int, metavar='N',
                     help='number of total epochs to run')
@@ -46,7 +46,7 @@ parser.add_argument('--finetune_epoch', default=3, type=int,
                     help='epoch to start cnn finetune')
 parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=32, type=int,
+parser.add_argument('-b', '--batch-size', default=128, type=int,
                     metavar='N', help='mini-batch size (default: 32)')
 parser.add_argument('-eb', '--eval_batch_size', default=128, type=int,
                     metavar='N', help='mini-batch size (default: 128)')
@@ -68,7 +68,8 @@ parser.add_argument('--print_freq', '-p', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('-e', '--evaluate', type=str, metavar='FILE',
                     help='evaluate model FILE on validation set')
-
+parser.add_argument('--pretrained', default=1, type=int, help='whether to finetune the network')
+parser.add_argument('--save_freq', default=5, type=int)
 
 def main():
     global args
@@ -78,13 +79,20 @@ def main():
     save_path = os.path.join(args.results_dir, args.save)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+    if args.pretrained != 1:
+        # if this is a model trained from scratch, train CNN from the starting of the epoch and train epoch much longer
+        args.finetune_epoch = 0
 
     setup_logging(os.path.join(save_path, 'log.txt'))
     checkpoint_file = os.path.join(save_path, 'checkpoint_epoch_%s.pth.tar')
 
     logging.debug("run arguments: %s", args)
-    logging.info("using pretrained cnn %s", args.cnn)
-    cnn = resnet.__dict__[args.cnn](pretrained=True)
+    if args.pretrained == 1:
+        logging.info("using pretrained cnn %s", args.cnn)
+        cnn = resnet.__dict__[args.cnn](pretrained=True)
+    else:
+        logging.info("using from-scratch cnn %s", args.cnn)
+        cnn = resnet.__dict__[args.cnn](pretrained=False)
 
     vocab = build_vocab()
     model = CaptionModel(cnn, vocab,
@@ -178,7 +186,8 @@ def main():
                      'Training Perplexity {train_perp:.4f} \t'
                      'Validation Perplexity {val_perp:.4f} \n'
                      .format(epoch + 1, train_perp=train_perp, val_perp=val_perp))
-        model.save_checkpoint(checkpoint_file % (epoch + 1))
+        if epoch % args.save_freq == 0 or epoch == args.epochs-1:
+            model.save_checkpoint(checkpoint_file % (epoch + 1))
 
 
 if __name__ == '__main__':
